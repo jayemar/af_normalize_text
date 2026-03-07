@@ -1,0 +1,22 @@
+{
+    "name": "jayemar/af-normalize-text",
+    "description": "TT-RSS plugin to normalize fullwidth Unicode characters in article titles and content",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "classmap": [
+            "init.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    }
+}
