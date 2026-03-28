@@ -29,12 +29,14 @@ class Af_Normalize_Text_Test extends TestCase {
             ->method('add_hook')
             ->willReturn(true);
 
-        // Default: normalize_titles=true, normalize_content=false
+        // Default: normalize_titles=true, normalize_content=false,
+        // replace_typographic_entities=true
         $this->mockHost->expects($this->any())
             ->method('get')
             ->willReturnCallback(function($plugin, $key, $default) {
                 if ($key === 'normalize_titles') return true;
                 if ($key === 'normalize_content') return false;
+                if ($key === 'replace_typographic_entities') return true;
                 return $default;
             });
 
@@ -326,6 +328,287 @@ class Af_Normalize_Text_Test extends TestCase {
     // HELPER
     // =====================================================================
 
+    // =====================================================================
+    // REPLACE_TYPOGRAPHIC - DIRECT TESTS
+    // =====================================================================
+
+    /**
+     * Test 21: &rsquo; replaced with ASCII apostrophe
+     */
+    public function test_replace_typographic_rsquo_entity() {
+        $result = $this->plugin->replace_typographic("it&rsquo;s");
+        $this->assertEquals("it's", $result,
+            '&rsquo; should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 22: &lsquo; replaced with ASCII apostrophe
+     */
+    public function test_replace_typographic_lsquo_entity() {
+        $result = $this->plugin->replace_typographic("&lsquo;quoted&rsquo;");
+        $this->assertEquals("'quoted'", $result,
+            '&lsquo; and &rsquo; should both become ASCII apostrophes');
+    }
+
+    /**
+     * Test 23: &ldquo; and &rdquo; replaced with ASCII double quotes
+     */
+    public function test_replace_typographic_dquote_entities() {
+        $result = $this->plugin->replace_typographic("&ldquo;hello&rdquo;");
+        $this->assertEquals('"hello"', $result,
+            '&ldquo; and &rdquo; should become ASCII double quotes');
+    }
+
+    /**
+     * Test 24: &mdash; replaced with double hyphen
+     */
+    public function test_replace_typographic_mdash_entity() {
+        $result = $this->plugin->replace_typographic("one&mdash;two");
+        $this->assertEquals("one--two", $result,
+            '&mdash; should become --');
+    }
+
+    /**
+     * Test 25: &ndash; replaced with single hyphen
+     */
+    public function test_replace_typographic_ndash_entity() {
+        $result = $this->plugin->replace_typographic("pp. 10&ndash;20");
+        $this->assertEquals("pp. 10-20", $result,
+            '&ndash; should become -');
+    }
+
+    /**
+     * Test 26: &hellip; replaced with three dots
+     */
+    public function test_replace_typographic_hellip_entity() {
+        $result = $this->plugin->replace_typographic("wait&hellip;");
+        $this->assertEquals("wait...", $result,
+            '&hellip; should become ...');
+    }
+
+    /**
+     * Test 27: &nbsp; replaced with regular space
+     */
+    public function test_replace_typographic_nbsp_entity() {
+        $result = $this->plugin->replace_typographic("hello&nbsp;world");
+        $this->assertEquals("hello world", $result,
+            '&nbsp; should become a regular space');
+    }
+
+    /**
+     * Test 28: Decimal numeric entity &#8217; replaced
+     */
+    public function test_replace_typographic_numeric_decimal() {
+        $result = $this->plugin->replace_typographic("it&#8217;s");
+        $this->assertEquals("it's", $result,
+            '&#8217; (decimal rsquo) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 29: Hex numeric entity &#x2019; replaced
+     */
+    public function test_replace_typographic_numeric_hex() {
+        $result = $this->plugin->replace_typographic("it&#x2019;s");
+        $this->assertEquals("it's", $result,
+            '&#x2019; (hex rsquo) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 30: Unicode U+2019 RIGHT SINGLE QUOTATION MARK replaced
+     */
+    public function test_replace_typographic_unicode_rsquo() {
+        $result = $this->plugin->replace_typographic("it\u{2019}s");
+        $this->assertEquals("it's", $result,
+            'Unicode U+2019 should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 31: Unicode U+201C LEFT DOUBLE QUOTATION MARK replaced
+     */
+    public function test_replace_typographic_unicode_ldquo() {
+        $result = $this->plugin->replace_typographic("\u{201C}hello\u{201D}");
+        $this->assertEquals('"hello"', $result,
+            'Unicode U+201C/U+201D should become ASCII double quotes');
+    }
+
+    /**
+     * Test 32: Entity replaced in title via hook
+     */
+    public function test_replace_typographic_in_title_via_hook() {
+        $article = [
+            'title' => "What&rsquo;s New",
+            'content' => '<p>Content.</p>'
+        ];
+
+        $result = $this->plugin->hook_article_filter($article);
+
+        $this->assertEquals("What's New", $result['title'],
+            '&rsquo; in title should be replaced via hook');
+    }
+
+    /**
+     * Test 33: Entity replaced in content via hook (independent of normalize_content)
+     */
+    public function test_replace_typographic_in_content_via_hook() {
+        // normalize_content is false by default, but entity replacement should
+        // still apply to content
+        $article = [
+            'title' => 'Normal Title',
+            'content' => "<p>It&rsquo;s a &ldquo;test&rdquo;.</p>"
+        ];
+
+        $result = $this->plugin->hook_article_filter($article);
+
+        $this->assertStringContainsString("It's", $result['content'],
+            '&rsquo; in content should be replaced even when normalize_content is off');
+        $this->assertStringContainsString('"test"', $result['content'],
+            '&ldquo;/&rdquo; in content should be replaced');
+    }
+
+    /**
+     * Test 34: Entity replacement disabled leaves entities unchanged
+     */
+    public function test_replace_typographic_disabled_leaves_entities_unchanged() {
+        $plugin = $this->createPluginWithSettings([
+            'normalize_titles'           => true,
+            'normalize_content'          => false,
+            'replace_typographic_entities' => false,
+        ]);
+
+        $article = [
+            'title' => "What&rsquo;s New",
+            'content' => "<p>It&rsquo;s fine.</p>"
+        ];
+
+        $result = $plugin->hook_article_filter($article);
+
+        $this->assertEquals("What&rsquo;s New", $result['title'],
+            '&rsquo; should be untouched when replace_typographic_entities is false');
+        $this->assertStringContainsString("&rsquo;", $result['content'],
+            'Content entities should be untouched when feature is disabled');
+    }
+
+    /**
+     * Test 35: HTML structural entities &lt; &amp; &gt; are preserved
+     */
+    public function test_html_structural_entities_preserved() {
+        $input = "<p>a &lt; b &amp;&amp; c &gt; d</p>";
+        $result = $this->plugin->replace_typographic($input);
+        $this->assertEquals($input, $result,
+            'HTML structural entities must not be altered');
+    }
+
+    // =====================================================================
+    // DOUBLE-ENCODED ENTITY TESTS
+    // TT-RSS/SimplePie can double-encode entities from feed content,
+    // storing &rsquo; as &amp;rsquo; in the database.
+    // =====================================================================
+
+    /**
+     * Test 36: Double-encoded &amp;rsquo; replaced with ASCII apostrophe
+     */
+    public function test_replace_double_encoded_rsquo() {
+        $result = $this->plugin->replace_typographic("North City&amp;rsquo;s eateries");
+        $this->assertEquals("North City's eateries", $result,
+            '&amp;rsquo; (double-encoded) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 37: Double-encoded &amp;lsquo; replaced with ASCII apostrophe
+     */
+    public function test_replace_double_encoded_lsquo() {
+        $result = $this->plugin->replace_typographic("&amp;lsquo;quoted&amp;rsquo;");
+        $this->assertEquals("'quoted'", $result,
+            '&amp;lsquo; (double-encoded) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 38: Double-encoded &amp;rdquo; and &amp;ldquo; replaced with ASCII quotes
+     */
+    public function test_replace_double_encoded_double_quotes() {
+        $result = $this->plugin->replace_typographic("&amp;ldquo;hello&amp;rdquo;");
+        $this->assertEquals('"hello"', $result,
+            '&amp;ldquo;/&amp;rdquo; (double-encoded) should become ASCII double quotes');
+    }
+
+    /**
+     * Test 39: Double-encoded &amp;mdash; replaced with double hyphen
+     */
+    public function test_replace_double_encoded_mdash() {
+        $result = $this->plugin->replace_typographic("one&amp;mdash;two");
+        $this->assertEquals("one--two", $result,
+            '&amp;mdash; (double-encoded) should become --');
+    }
+
+    /**
+     * Test 40: Double-encoded &amp;ndash; replaced with single hyphen
+     */
+    public function test_replace_double_encoded_ndash() {
+        $result = $this->plugin->replace_typographic("pp. 10&amp;ndash;20");
+        $this->assertEquals("pp. 10-20", $result,
+            '&amp;ndash; (double-encoded) should become -');
+    }
+
+    /**
+     * Test 41: Double-encoded &amp;hellip; replaced with three dots
+     */
+    public function test_replace_double_encoded_hellip() {
+        $result = $this->plugin->replace_typographic("wait&amp;hellip;");
+        $this->assertEquals("wait...", $result,
+            '&amp;hellip; (double-encoded) should become ...');
+    }
+
+    /**
+     * Test 42: Double-encoded &amp;nbsp; replaced with regular space
+     */
+    public function test_replace_double_encoded_nbsp() {
+        $result = $this->plugin->replace_typographic("hello&amp;nbsp;world");
+        $this->assertEquals("hello world", $result,
+            '&amp;nbsp; (double-encoded) should become a regular space');
+    }
+
+    /**
+     * Test 43: Double-encoded numeric entity &amp;#8217; replaced
+     */
+    public function test_replace_double_encoded_numeric_decimal() {
+        $result = $this->plugin->replace_typographic("it&amp;#8217;s");
+        $this->assertEquals("it's", $result,
+            '&amp;#8217; (double-encoded decimal rsquo) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 44: Double-encoded hex entity &amp;#x2019; replaced
+     */
+    public function test_replace_double_encoded_numeric_hex() {
+        $result = $this->plugin->replace_typographic("it&amp;#x2019;s");
+        $this->assertEquals("it's", $result,
+            '&amp;#x2019; (double-encoded hex rsquo) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 45: Double-encoded entity replaced in content via hook
+     * Reproduces the sandiegoreader.com issue where &rsquo; is stored as &amp;rsquo;
+     */
+    public function test_replace_double_encoded_in_content_via_hook() {
+        $article = [
+            'title' => 'Normal Title',
+            'content' => "<p>North City&amp;rsquo;s eateries for sips and bites.</p>"
+        ];
+
+        $result = $this->plugin->hook_article_filter($article);
+
+        $this->assertStringContainsString("North City's eateries", $result['content'],
+            '&amp;rsquo; in content should be replaced via hook');
+        $this->assertStringNotContainsString('&amp;rsquo;', $result['content'],
+            'No double-encoded rsquo should remain in content');
+        $this->assertStringNotContainsString('&rsquo;', $result['content'],
+            'No rsquo entity should remain in content');
+    }
+
+    // =====================================================================
+    // HELPER
+    // =====================================================================
+
     /**
      * Create a plugin instance with specific settings
      */
@@ -339,7 +622,10 @@ class Af_Normalize_Text_Test extends TestCase {
         $host->expects($this->any())
             ->method('get')
             ->willReturnCallback(function($plugin, $key, $default) use ($settings) {
-                return $settings[$key] ?? $default;
+                if (array_key_exists($key, $settings)) return $settings[$key];
+                // Default: replace_typographic_entities on
+                if ($key === 'replace_typographic_entities') return true;
+                return $default;
             });
 
         $plugin = new Af_Normalize_Text();

@@ -25,6 +25,74 @@ class Af_Normalize_Text extends Plugin {
 
     private $host;
 
+    // HTML entity strings -> ASCII equivalents
+    // Only typographic/punctuation entities; structural entities (&lt; etc.) excluded.
+    // Double-encoded variants (&amp;rsquo; etc.) are listed first to avoid partial
+    // matches when TT-RSS/SimplePie stores entities as &amp;rsquo; instead of &rsquo;.
+    private static $ENTITY_MAP = [
+        '&amp;rsquo;'  => "'",
+        '&amp;#8217;'  => "'",
+        '&amp;#x2019;' => "'",
+        '&amp;lsquo;'  => "'",
+        '&amp;#8216;'  => "'",
+        '&amp;#x2018;' => "'",
+        '&amp;rdquo;'  => '"',
+        '&amp;#8221;'  => '"',
+        '&amp;#x201D;' => '"',
+        '&amp;ldquo;'  => '"',
+        '&amp;#8220;'  => '"',
+        '&amp;#x201C;' => '"',
+        '&amp;mdash;'  => '--',
+        '&amp;#8212;'  => '--',
+        '&amp;#x2014;' => '--',
+        '&amp;ndash;'  => '-',
+        '&amp;#8211;'  => '-',
+        '&amp;#x2013;' => '-',
+        '&amp;hellip;' => '...',
+        '&amp;#8230;'  => '...',
+        '&amp;#x2026;' => '...',
+        '&amp;nbsp;'   => ' ',
+        '&amp;#160;'   => ' ',
+        '&amp;#xA0;'   => ' ',
+        '&rsquo;'  => "'",
+        '&#8217;'  => "'",
+        '&#x2019;' => "'",
+        '&lsquo;'  => "'",
+        '&#8216;'  => "'",
+        '&#x2018;' => "'",
+        '&rdquo;'  => '"',
+        '&#8221;'  => '"',
+        '&#x201D;' => '"',
+        '&ldquo;'  => '"',
+        '&#8220;'  => '"',
+        '&#x201C;' => '"',
+        '&mdash;'  => '--',
+        '&#8212;'  => '--',
+        '&#x2014;' => '--',
+        '&ndash;'  => '-',
+        '&#8211;'  => '-',
+        '&#x2013;' => '-',
+        '&hellip;' => '...',
+        '&#8230;'  => '...',
+        '&#x2026;' => '...',
+        '&nbsp;'   => ' ',
+        '&#160;'   => ' ',
+        '&#xA0;'   => ' ',
+    ];
+
+    // Unicode typographic characters -> ASCII equivalents
+    // Handles entities that have already been decoded to Unicode code points.
+    private static $UNICODE_MAP = [
+        "\u{2019}" => "'",
+        "\u{2018}" => "'",
+        "\u{201D}" => '"',
+        "\u{201C}" => '"',
+        "\u{2014}" => '--',
+        "\u{2013}" => '-',
+        "\u{2026}" => '...',
+        "\u{00A0}" => ' ',
+    ];
+
     public function about() {
         return array(
             1.0,
@@ -52,6 +120,7 @@ class Af_Normalize_Text extends Plugin {
 
         $normalize_titles = $this->host->get($this, "normalize_titles", true);
         $normalize_content = $this->host->get($this, "normalize_content", false);
+        $replace_typographic_entities = $this->host->get($this, "replace_typographic_entities", true);
         ?>
         <div dojoType="dijit.layout.AccordionPane"
             title="<i class='material-icons'>text_fields</i> <?= __('Text Normalization') ?>">
@@ -93,6 +162,22 @@ class Af_Normalize_Text extends Plugin {
                     </p>
                 </fieldset>
 
+                <fieldset>
+                    <legend><?= __('Typographic Entity Replacement') ?></legend>
+                    <p class="help-text" style="color: #666;">
+                        <?= __('Replaces typographic HTML entities and Unicode characters with ASCII equivalents (e.g., &amp;rsquo; or \u2019 \u2192 \', &amp;mdash; \u2192 --, &amp;hellip; \u2192 ...).') ?>
+                    </p>
+                    <label class="checkbox">
+                        <input dojoType="dijit.form.CheckBox" type="checkbox"
+                            name="replace_typographic_entities" value="1"
+                            <?= $replace_typographic_entities ? 'checked' : '' ?>>
+                        <?= __('Replace typographic entities with ASCII') ?>
+                    </label>
+                    <p class="help-text" style="margin-left: 24px; color: #666;">
+                        <?= __('Applies to titles and content. Structural HTML entities (&amp;lt;, &amp;amp;, &amp;gt;) are never altered.') ?>
+                    </p>
+                </fieldset>
+
                 <hr>
 
                 <?= \Controls\submit_tag(__("Save")) ?>
@@ -112,6 +197,9 @@ class Af_Normalize_Text extends Plugin {
         $normalize_content = ($_POST['normalize_content'] ?? '') === '1';
         $this->host->set($this, "normalize_content", $normalize_content);
 
+        $replace_typographic_entities = ($_POST['replace_typographic_entities'] ?? '') === '1';
+        $this->host->set($this, "replace_typographic_entities", $replace_typographic_entities);
+
         echo __('Settings saved.');
     }
 
@@ -120,6 +208,8 @@ class Af_Normalize_Text extends Plugin {
     // =====================================================================
 
     public function hook_article_filter($article) {
+        $replace_entities = $this->host->get($this, "replace_typographic_entities", true);
+
         if ($this->host->get($this, "normalize_titles", true)) {
             $original = $article['title'] ?? '';
             if (!empty($original)) {
@@ -144,12 +234,64 @@ class Af_Normalize_Text extends Plugin {
             }
         }
 
+        if ($replace_entities) {
+            $title = $article['title'] ?? '';
+            if (!empty($title)) {
+                $replaced = $this->replace_typographic($title);
+                if ($replaced !== $title) {
+                    $article['title'] = $replaced;
+                    Debug::log("af_normalize_text: Replaced entities in title: $replaced",
+                        Debug::LOG_VERBOSE);
+                }
+            }
+
+            $content = $article['content'] ?? '';
+            if (!empty($content)) {
+                $replaced = $this->replace_typographic($content);
+                if ($replaced !== $content) {
+                    $article['content'] = $replaced;
+                    Debug::log("af_normalize_text: Replaced entities in content for: " .
+                        ($article['title'] ?? 'unknown'), Debug::LOG_VERBOSE);
+                }
+            }
+        }
+
         return $article;
     }
 
     // =====================================================================
     // NORMALIZATION
     // =====================================================================
+
+    /**
+     * Replace typographic HTML entities and Unicode characters with ASCII.
+     *
+     * Handles both named/numeric HTML entities (e.g., &rsquo;, &#8217;, &#x2019;)
+     * and their Unicode code point equivalents (e.g., U+2019). Structural HTML
+     * entities (&lt;, &gt;, &amp;) are intentionally excluded.
+     *
+     * @param string $str Input string possibly containing typographic entities
+     * @return string String with typographic entities replaced by ASCII equivalents
+     */
+    public function replace_typographic(string $str): string {
+        if (empty($str)) {
+            return $str;
+        }
+
+        $str = str_replace(
+            array_keys(self::$ENTITY_MAP),
+            array_values(self::$ENTITY_MAP),
+            $str
+        );
+
+        $str = str_replace(
+            array_keys(self::$UNICODE_MAP),
+            array_values(self::$UNICODE_MAP),
+            $str
+        );
+
+        return $str;
+    }
 
     /**
      * Normalize fullwidth Unicode characters to their ASCII equivalents.
