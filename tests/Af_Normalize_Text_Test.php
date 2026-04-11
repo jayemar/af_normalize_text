@@ -605,6 +605,46 @@ class Af_Normalize_Text_Test extends TestCase {
             'No rsquo entity should remain in content');
     }
 
+    /**
+     * Test 46: Double-encoded &amp;amp; replaced with &amp;
+     * Reproduces the KPBS figcaption case where &amp; is stored as &amp;amp;
+     */
+    public function test_replace_double_encoded_amp() {
+        $result = $this->plugin->replace_typographic(
+            "Convention &amp;amp; Entertainment Center"
+        );
+        $this->assertEquals(
+            "Convention &amp; Entertainment Center",
+            $result,
+            '&amp;amp; (double-encoded) should become &amp;'
+        );
+    }
+
+    /**
+     * Test 47: Double-encoded &amp;amp; in figcaption content via hook
+     * Reproduces the KPBS article where figcaption shows &amp; literally
+     */
+    public function test_replace_double_encoded_amp_in_figcaption_via_hook() {
+        $article = [
+            'title' => 'Normal Title',
+            'content' => '<figure><figcaption>Fresno Convention &amp;amp; '
+                       . 'Entertainment Center</figcaption></figure>',
+        ];
+
+        $result = $this->plugin->hook_article_filter($article);
+
+        $this->assertStringContainsString(
+            'Convention &amp; Entertainment',
+            $result['content'],
+            '&amp;amp; in figcaption should become &amp; via hook'
+        );
+        $this->assertStringNotContainsString(
+            '&amp;amp;',
+            $result['content'],
+            'No double-encoded amp should remain in content'
+        );
+    }
+
     // =====================================================================
     // HELPER
     // =====================================================================

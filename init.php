@@ -26,10 +26,13 @@ class Af_Normalize_Text extends Plugin {
     private $host;
 
     // HTML entity strings -> ASCII equivalents
-    // Only typographic/punctuation entities; structural entities (&lt; etc.) excluded.
+    // Only typographic/punctuation entities; plain structural entities (&lt;, &gt;,
+    // &amp;) are excluded, but &amp;amp; (double-encoded ampersand from
+    // TT-RSS/SimplePie) is handled by converting it back to &amp;.
     // Double-encoded variants (&amp;rsquo; etc.) are listed first to avoid partial
     // matches when TT-RSS/SimplePie stores entities as &amp;rsquo; instead of &rsquo;.
     private static $ENTITY_MAP = [
+        '&amp;amp;'    => '&amp;',
         '&amp;rsquo;'  => "'",
         '&amp;#8217;'  => "'",
         '&amp;#x2019;' => "'",
