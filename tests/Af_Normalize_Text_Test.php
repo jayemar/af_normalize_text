@@ -645,6 +645,60 @@ class Af_Normalize_Text_Test extends TestCase {
         );
     }
 
+    /**
+     * Test 48: &apos; replaced with ASCII apostrophe
+     */
+    public function test_replace_typographic_apos_entity() {
+        $result = $this->plugin->replace_typographic("Microsoft&apos;s");
+        $this->assertEquals("Microsoft's", $result,
+            '&apos; should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 49: Double-encoded &amp;apos; replaced with ASCII apostrophe
+     */
+    public function test_replace_double_encoded_apos() {
+        $result = $this->plugin->replace_typographic("Microsoft&amp;apos;s");
+        $this->assertEquals("Microsoft's", $result,
+            '&amp;apos; (double-encoded) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 50: Numeric entity &#39; replaced with ASCII apostrophe
+     */
+    public function test_replace_typographic_numeric_39() {
+        $result = $this->plugin->replace_typographic("it&#39;s");
+        $this->assertEquals("it's", $result,
+            '&#39; (decimal apostrophe) should become ASCII apostrophe');
+    }
+
+    /**
+     * Test 51: &quot; replaced with ASCII double quote
+     */
+    public function test_replace_typographic_quot_entity() {
+        $result = $this->plugin->replace_typographic("&quot;hello&quot;");
+        $this->assertEquals('"hello"', $result,
+            '&quot; should become ASCII double quote');
+    }
+
+    /**
+     * Test 52: Double-encoded &amp;quot; replaced with ASCII double quote
+     */
+    public function test_replace_double_encoded_quot() {
+        $result = $this->plugin->replace_typographic("&amp;quot;hello&amp;quot;");
+        $this->assertEquals('"hello"', $result,
+            '&amp;quot; (double-encoded) should become ASCII double quote');
+    }
+
+    /**
+     * Test 53: Numeric entity &#34; replaced with ASCII double quote
+     */
+    public function test_replace_typographic_numeric_34() {
+        $result = $this->plugin->replace_typographic("say &#34;hello&#34;");
+        $this->assertEquals('say "hello"', $result,
+            '&#34; (decimal double quote) should become ASCII double quote');
+    }
+
     // =====================================================================
     // HELPER
     // =====================================================================

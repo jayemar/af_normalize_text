@@ -33,6 +33,12 @@ class Af_Normalize_Text extends Plugin {
     // matches when TT-RSS/SimplePie stores entities as &amp;rsquo; instead of &rsquo;.
     private static $ENTITY_MAP = [
         '&amp;amp;'    => '&amp;',
+        '&amp;apos;'   => "'",
+        '&amp;#39;'    => "'",
+        '&amp;#x27;'   => "'",
+        '&amp;quot;'   => '"',
+        '&amp;#34;'    => '"',
+        '&amp;#x22;'   => '"',
         '&amp;rsquo;'  => "'",
         '&amp;#8217;'  => "'",
         '&amp;#x2019;' => "'",
@@ -81,6 +87,12 @@ class Af_Normalize_Text extends Plugin {
         '&nbsp;'   => ' ',
         '&#160;'   => ' ',
         '&#xA0;'   => ' ',
+        '&apos;'   => "'",
+        '&#39;'    => "'",
+        '&#x27;'   => "'",
+        '&quot;'   => '"',
+        '&#34;'    => '"',
+        '&#x22;'   => '"',
     ];
 
     // Unicode typographic characters -> ASCII equivalents

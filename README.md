@@ -47,14 +47,17 @@ double-encoded variants produced by TT-RSS/SimplePie:
 
 | Entity | Encoding forms handled | Replaced with |
 |---|---|---|
-| Right single quote | `&rsquo;` `&#8217;` `&#x2019;` `\u{2019}` `&amp;rsquo;` | `'` |
-| Left single quote | `&lsquo;` `&#8216;` `&#x2018;` `\u{2018}` `&amp;lsquo;` | `'` |
-| Right double quote | `&rdquo;` `&#8221;` `&#x201D;` `\u{201D}` `&amp;rdquo;` | `"` |
-| Left double quote | `&ldquo;` `&#8220;` `&#x201C;` `\u{201C}` `&amp;ldquo;` | `"` |
-| Em dash | `&mdash;` `&#8212;` `&#x2014;` `\u{2014}` `&amp;mdash;` | `--` |
-| En dash | `&ndash;` `&#8211;` `&#x2013;` `\u{2013}` `&amp;ndash;` | `-` |
-| Ellipsis | `&hellip;` `&#8230;` `&#x2026;` `\u{2026}` `&amp;hellip;` | `...` |
-| Non-breaking space | `&nbsp;` `&#160;` `&#xA0;` `\u{00A0}` `&amp;nbsp;` | ` ` |
+| Apostrophe (XML) | `&apos;` `&#39;` `&#x27;` `&amp;apos;` `&amp;#39;` `&amp;#x27;` | `'` |
+| Right single quote | `&rsquo;` `&#8217;` `&#x2019;` `\u{2019}` `&amp;rsquo;` `&amp;#8217;` `&amp;#x2019;` | `'` |
+| Left single quote | `&lsquo;` `&#8216;` `&#x2018;` `\u{2018}` `&amp;lsquo;` `&amp;#8216;` `&amp;#x2018;` | `'` |
+| Straight double quote | `&quot;` `&#34;` `&#x22;` `&amp;quot;` `&amp;#34;` `&amp;#x22;` | `"` |
+| Right double quote | `&rdquo;` `&#8221;` `&#x201D;` `\u{201D}` `&amp;rdquo;` `&amp;#8221;` `&amp;#x201D;` | `"` |
+| Left double quote | `&ldquo;` `&#8220;` `&#x201C;` `\u{201C}` `&amp;ldquo;` `&amp;#8220;` `&amp;#x201C;` | `"` |
+| Em dash | `&mdash;` `&#8212;` `&#x2014;` `\u{2014}` `&amp;mdash;` `&amp;#8212;` `&amp;#x2014;` | `--` |
+| En dash | `&ndash;` `&#8211;` `&#x2013;` `\u{2013}` `&amp;ndash;` `&amp;#8211;` `&amp;#x2013;` | `-` |
+| Ellipsis | `&hellip;` `&#8230;` `&#x2026;` `\u{2026}` `&amp;hellip;` `&amp;#8230;` `&amp;#x2026;` | `...` |
+| Non-breaking space | `&nbsp;` `&#160;` `&#xA0;` `\u{00A0}` `&amp;nbsp;` `&amp;#160;` `&amp;#xA0;` | ` ` |
+| Double-encoded ampersand | `&amp;amp;` | `&amp;` |
 
 Structural HTML entities (`&lt;`, `&amp;`, `&gt;`) are intentionally excluded
 and are never altered.
