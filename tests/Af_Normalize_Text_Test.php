@@ -700,6 +700,139 @@ class Af_Normalize_Text_Test extends TestCase {
     }
 
     // =====================================================================
+    // DECODE CHARACTER ENTITIES
+    // =====================================================================
+
+    /**
+     * Test 54: &eacute; decoded to e with acute accent
+     */
+    public function test_decode_eacute_entity() {
+        $result = $this->plugin->replace_typographic('caf&eacute;');
+        $this->assertEquals('café', $result,
+            '&eacute; should be decoded to é');
+    }
+
+    /**
+     * Test 55: &agrave; decoded to a with grave accent
+     */
+    public function test_decode_agrave_entity() {
+        $result = $this->plugin->replace_typographic('&agrave;');
+        $this->assertEquals('à', $result,
+            '&agrave; should be decoded to à');
+    }
+
+    /**
+     * Test 56: &oacute; decoded mid-word
+     */
+    public function test_decode_oacute_entity() {
+        $result = $this->plugin->replace_typographic('M&oacute;nica');
+        $this->assertEquals('Mónica', $result,
+            '&oacute; should be decoded to ó');
+    }
+
+    /**
+     * Test 57: &copy; decoded to copyright symbol
+     */
+    public function test_decode_copy_entity() {
+        $result = $this->plugin->replace_typographic('&copy; 2024');
+        $this->assertEquals('© 2024', $result,
+            '&copy; should be decoded to ©');
+    }
+
+    /**
+     * Test 58: Decimal numeric entity &#233; decoded to e with acute accent
+     */
+    public function test_decode_decimal_eacute() {
+        $result = $this->plugin->replace_typographic('caf&#233;');
+        $this->assertEquals('café', $result,
+            '&#233; should be decoded to é');
+    }
+
+    /**
+     * Test 59: Hex numeric entity &#xe9; (lowercase) decoded to e with acute accent
+     */
+    public function test_decode_hex_eacute_lowercase() {
+        $result = $this->plugin->replace_typographic('caf&#xe9;');
+        $this->assertEquals('café', $result,
+            '&#xe9; should be decoded to é');
+    }
+
+    /**
+     * Test 60: Hex numeric entity &#xE9; (uppercase) decoded to e with acute accent
+     */
+    public function test_decode_hex_eacute_uppercase() {
+        $result = $this->plugin->replace_typographic('caf&#xE9;');
+        $this->assertEquals('café', $result,
+            '&#xE9; should be decoded to é');
+    }
+
+    /**
+     * Test 61: &lt; preserved (structural entity)
+     */
+    public function test_decode_lt_preserved() {
+        $result = $this->plugin->replace_typographic('a &lt; b');
+        $this->assertEquals('a &lt; b', $result,
+            '&lt; must not be decoded - it is a structural HTML entity');
+    }
+
+    /**
+     * Test 62: &gt; preserved (structural entity)
+     */
+    public function test_decode_gt_preserved() {
+        $result = $this->plugin->replace_typographic('a &gt; b');
+        $this->assertEquals('a &gt; b', $result,
+            '&gt; must not be decoded - it is a structural HTML entity');
+    }
+
+    /**
+     * Test 63: &amp; preserved (structural entity)
+     */
+    public function test_decode_amp_preserved() {
+        $result = $this->plugin->replace_typographic('a &amp; b');
+        $this->assertEquals('a &amp; b', $result,
+            '&amp; must not be decoded - it is a structural HTML entity');
+    }
+
+    /**
+     * Test 64: Double-encoded &amp;amp; resolves to &amp; via ENTITY_MAP, then
+     * &amp; is preserved by decode_character_entities
+     */
+    public function test_decode_amp_amp_chain() {
+        $result = $this->plugin->replace_typographic('Convention &amp;amp; Center');
+        $this->assertEquals('Convention &amp; Center', $result,
+            '&amp;amp; should become &amp; (not decoded further)');
+    }
+
+    /**
+     * Test 65: Mixed accented, structural, and typographic entities in one string
+     */
+    public function test_decode_mixed_entities_in_content() {
+        $result = $this->plugin->replace_typographic(
+            'Caf&eacute; &amp; Bistro &mdash; &eacute;l&egrave;ve'
+        );
+        $this->assertEquals('Café &amp; Bistro -- élève', $result,
+            'Accented entities decoded, structural preserved, typographic converted to ASCII');
+    }
+
+    /**
+     * Test 66: Unknown/invalid entity name left unchanged
+     */
+    public function test_decode_unknown_entity_unchanged() {
+        $result = $this->plugin->replace_typographic('&zzznonsense;');
+        $this->assertEquals('&zzznonsense;', $result,
+            'Unknown entity names should be left unchanged');
+    }
+
+    /**
+     * Test 67: &reg; decoded to registered trademark symbol
+     */
+    public function test_decode_reg_entity() {
+        $result = $this->plugin->replace_typographic('Acme&reg;');
+        $this->assertEquals('Acme®', $result,
+            '&reg; should be decoded to ®');
+    }
+
+    // =====================================================================
     // HELPER
     // =====================================================================
 

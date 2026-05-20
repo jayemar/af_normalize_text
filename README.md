@@ -18,6 +18,11 @@ display poorly or inconsistently in feed readers:
    variants (`&amp;rsquo;`) when TT-RSS/SimplePie does not fully decode them.
    These render as literal entity strings instead of the intended characters.
 
+3. **HTML character entities** for accented and extended characters such as
+   `&eacute;`, `&agrave;`, `&copy;`, `&reg;`, and any other named, decimal
+   (`&#233;`), or hex (`&#xE9;`) entity that was not decoded before storage.
+   These appear as raw entity strings rather than the intended characters.
+
 ## Solution
 
 This plugin normalizes both categories at import time, so all clients benefit
@@ -64,6 +69,24 @@ and are never altered.
 
 Entity replacement applies to both title and content independently of the
 fullwidth normalization settings.
+
+## HTML Character Entity Decoding
+
+Beyond the typographic entities above, the plugin also decodes any remaining
+HTML character entities to their Unicode equivalents. This handles accented
+and extended characters that feeds may leave encoded:
+
+| Example entity | Encoding forms handled | Decoded to |
+|---|---|---|
+| e with acute | `&eacute;` `&#233;` `&#xE9;` | `é` |
+| a with grave | `&agrave;` `&#224;` `&#xE0;` | `à` |
+| Copyright | `&copy;` `&#169;` `&#xA9;` | `©` |
+| Registered trademark | `&reg;` `&#174;` `&#xAE;` | `®` |
+| Any other named/numeric entity | `&name;` `&#decimal;` `&#xhex;` | decoded Unicode character |
+
+This step runs after typographic entity replacement. Structural entities
+(`&lt;`, `&gt;`, `&amp;`) are always preserved. Unknown entity names are
+left unchanged.
 
 ## Installation
 

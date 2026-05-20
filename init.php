@@ -305,6 +305,51 @@ class Af_Normalize_Text extends Plugin {
             $str
         );
 
+        $str = $this->decode_character_entities($str);
+
+        return $str;
+    }
+
+    private function decode_character_entities(string $str): string {
+        // Named entities: skip lt, gt, amp to preserve HTML structure.
+        $str = preg_replace_callback(
+            '/&([a-zA-Z][a-zA-Z0-9]*);/',
+            function (array $m): string {
+                $name = $m[1];
+                if ($name === 'lt' || $name === 'gt' || $name === 'amp') {
+                    return $m[0];
+                }
+                return html_entity_decode('&' . $name . ';', ENT_HTML5, 'UTF-8');
+            },
+            $str
+        );
+
+        // Decimal numeric entities: guard codepoints for <, &, >.
+        $str = preg_replace_callback(
+            '/&#([0-9]+);/',
+            function (array $m): string {
+                $cp = (int) $m[1];
+                if ($cp === 60 || $cp === 62 || $cp === 38) {
+                    return $m[0];
+                }
+                return html_entity_decode('&#' . $m[1] . ';', ENT_HTML5, 'UTF-8');
+            },
+            $str
+        );
+
+        // Hex numeric entities: guard codepoints for <, &, >.
+        $str = preg_replace_callback(
+            '/&#x([0-9a-fA-F]+);/',
+            function (array $m): string {
+                $cp = hexdec($m[1]);
+                if ($cp === 60 || $cp === 62 || $cp === 38) {
+                    return $m[0];
+                }
+                return html_entity_decode('&#x' . $m[1] . ';', ENT_HTML5, 'UTF-8');
+            },
+            $str
+        );
+
         return $str;
     }
 
