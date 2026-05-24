@@ -833,6 +833,69 @@ class Af_Normalize_Text_Test extends TestCase {
     }
 
     // =====================================================================
+    // FULLWIDTH PUNCTUATION NORMALIZATION
+    // =====================================================================
+
+    /**
+     * Test 68: Literal fullwidth semicolon normalized via normalize()
+     */
+    public function test_normalize_fullwidth_semicolon() {
+        $result = $this->plugin->normalize("White House\u{FF1B} bystander");
+        $this->assertEquals("White House; bystander", $result,
+            'Fullwidth semicolon should become halfwidth semicolon');
+    }
+
+    /**
+     * Test 69: Literal fullwidth comma, parentheses, and colon normalized via normalize()
+     */
+    public function test_normalize_fullwidth_comma_paren_colon() {
+        $result = $this->plugin->normalize("Hello\u{FF08}world\u{FF09}\u{FF0C} foo\u{FF1A}bar");
+        $this->assertEquals("Hello(world), foo:bar", $result,
+            'Fullwidth comma, parens, and colon should become halfwidth ASCII');
+    }
+
+    /**
+     * Test 70: replace_typographic() converts literal fullwidth semicolon via FULLWIDTH_PUNCTUATION_MAP
+     */
+    public function test_replace_typographic_fullwidth_semicolon() {
+        $result = $this->plugin->replace_typographic("White House\u{FF1B} bystander");
+        $this->assertEquals("White House; bystander", $result,
+            'replace_typographic() should convert fullwidth semicolon via FULLWIDTH_PUNCTUATION_MAP');
+    }
+
+    /**
+     * Test 71: replace_typographic() converts a variety of fullwidth punctuation
+     */
+    public function test_replace_typographic_fullwidth_punctuation_variety() {
+        $result = $this->plugin->replace_typographic(
+            "\u{FF01}\u{FF0C}\u{FF08}\u{FF09}\u{FF1A}\u{FF1B}\u{FF1F}"
+        );
+        $this->assertEquals("!,():;?", $result,
+            'Common fullwidth punctuation chars should all be converted to halfwidth');
+    }
+
+    /**
+     * Test 72: Entity-encoded fullwidth semicolon in title normalized end-to-end via hook
+     */
+    public function test_hook_entity_encoded_fullwidth_semicolon_in_title() {
+        $article = ['title' => 'White House&#xFF1B; bystander shot', 'content' => ''];
+        $result = $this->plugin->hook_article_filter($article);
+        $this->assertEquals('White House; bystander shot', $result['title'],
+            'Entity-encoded fullwidth semicolon should be decoded then normalized');
+    }
+
+    /**
+     * Test 73: Entity-encoded fullwidth semicolon (decimal) in title normalized end-to-end
+     */
+    public function test_hook_entity_encoded_fullwidth_semicolon_decimal() {
+        // &#65307; is the decimal form of U+FF1B
+        $article = ['title' => 'White House&#65307; bystander shot', 'content' => ''];
+        $result = $this->plugin->hook_article_filter($article);
+        $this->assertEquals('White House; bystander shot', $result['title'],
+            'Decimal-encoded fullwidth semicolon should be decoded then normalized');
+    }
+
+    // =====================================================================
     // HELPER
     // =====================================================================
 

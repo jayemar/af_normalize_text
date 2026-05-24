@@ -108,6 +108,46 @@ class Af_Normalize_Text extends Plugin {
         "\u{00A0}" => ' ',
     ];
 
+    // Fullwidth ASCII punctuation (U+FF01-U+FF0F, U+FF1A-U+FF20, U+FF3B-U+FF40,
+    // U+FF5B-U+FF5E) -> halfwidth ASCII equivalents.
+    // NFKC (intl extension) handles these automatically; this map covers the
+    // mb_convert_kana fallback path, which only handles fullwidth alpha (r),
+    // numeric (n), and ideographic space (s) but not fullwidth punctuation.
+    private static $FULLWIDTH_PUNCTUATION_MAP = [
+        "\u{FF01}" => '!',
+        "\u{FF02}" => '"',
+        "\u{FF03}" => '#',
+        "\u{FF04}" => '$',
+        "\u{FF05}" => '%',
+        "\u{FF06}" => '&',
+        "\u{FF07}" => "'",
+        "\u{FF08}" => '(',
+        "\u{FF09}" => ')',
+        "\u{FF0A}" => '*',
+        "\u{FF0B}" => '+',
+        "\u{FF0C}" => ',',
+        "\u{FF0D}" => '-',
+        "\u{FF0E}" => '.',
+        "\u{FF0F}" => '/',
+        "\u{FF1A}" => ':',
+        "\u{FF1B}" => ';',
+        "\u{FF1C}" => '<',
+        "\u{FF1D}" => '=',
+        "\u{FF1E}" => '>',
+        "\u{FF1F}" => '?',
+        "\u{FF20}" => '@',
+        "\u{FF3B}" => '[',
+        "\u{FF3C}" => '\\',
+        "\u{FF3D}" => ']',
+        "\u{FF3E}" => '^',
+        "\u{FF3F}" => '_',
+        "\u{FF40}" => '`',
+        "\u{FF5B}" => '{',
+        "\u{FF5C}" => '|',
+        "\u{FF5D}" => '}',
+        "\u{FF5E}" => '~',
+    ];
+
     public function about() {
         return array(
             1.0,
@@ -225,6 +265,31 @@ class Af_Normalize_Text extends Plugin {
     public function hook_article_filter($article) {
         $replace_entities = $this->host->get($this, "replace_typographic_entities", true);
 
+        // Typographic/entity replacement runs first so that any HTML-entity-encoded
+        // fullwidth characters (e.g., &#xFF1B;) are decoded to Unicode before the
+        // NFKC normalization step converts them to ASCII equivalents.
+        if ($replace_entities) {
+            $title = $article['title'] ?? '';
+            if (!empty($title)) {
+                $replaced = $this->replace_typographic($title);
+                if ($replaced !== $title) {
+                    $article['title'] = $replaced;
+                    Debug::log("af_normalize_text: Replaced entities in title: $replaced",
+                        Debug::LOG_VERBOSE);
+                }
+            }
+
+            $content = $article['content'] ?? '';
+            if (!empty($content)) {
+                $replaced = $this->replace_typographic($content);
+                if ($replaced !== $content) {
+                    $article['content'] = $replaced;
+                    Debug::log("af_normalize_text: Replaced entities in content for: " .
+                        ($article['title'] ?? 'unknown'), Debug::LOG_VERBOSE);
+                }
+            }
+        }
+
         if ($this->host->get($this, "normalize_titles", true)) {
             $original = $article['title'] ?? '';
             if (!empty($original)) {
@@ -244,28 +309,6 @@ class Af_Normalize_Text extends Plugin {
                 if ($normalized !== $original) {
                     $article['content'] = $normalized;
                     Debug::log("af_normalize_text: Normalized content for: " .
-                        ($article['title'] ?? 'unknown'), Debug::LOG_VERBOSE);
-                }
-            }
-        }
-
-        if ($replace_entities) {
-            $title = $article['title'] ?? '';
-            if (!empty($title)) {
-                $replaced = $this->replace_typographic($title);
-                if ($replaced !== $title) {
-                    $article['title'] = $replaced;
-                    Debug::log("af_normalize_text: Replaced entities in title: $replaced",
-                        Debug::LOG_VERBOSE);
-                }
-            }
-
-            $content = $article['content'] ?? '';
-            if (!empty($content)) {
-                $replaced = $this->replace_typographic($content);
-                if ($replaced !== $content) {
-                    $article['content'] = $replaced;
-                    Debug::log("af_normalize_text: Replaced entities in content for: " .
                         ($article['title'] ?? 'unknown'), Debug::LOG_VERBOSE);
                 }
             }
@@ -302,6 +345,12 @@ class Af_Normalize_Text extends Plugin {
         $str = str_replace(
             array_keys(self::$UNICODE_MAP),
             array_values(self::$UNICODE_MAP),
+            $str
+        );
+
+        $str = str_replace(
+            array_keys(self::$FULLWIDTH_PUNCTUATION_MAP),
+            array_values(self::$FULLWIDTH_PUNCTUATION_MAP),
             $str
         );
 
@@ -366,6 +415,9 @@ class Af_Normalize_Text extends Plugin {
      *   n - fullwidth numeric characters to halfwidth
      *   s - fullwidth space (U+3000) to halfwidth space
      *
+     * The fallback also applies $FULLWIDTH_PUNCTUATION_MAP to cover fullwidth
+     * ASCII punctuation (e.g., ；，（）) not handled by the 'rns' flags.
+     *
      * @param string $str Input string possibly containing fullwidth characters
      * @return string String with fullwidth characters replaced by ASCII equivalents
      */
@@ -380,7 +432,12 @@ class Af_Normalize_Text extends Plugin {
         }
 
         if (function_exists('mb_convert_kana')) {
-            return mb_convert_kana($str, 'rns');
+            $str = mb_convert_kana($str, 'rns');
+            return str_replace(
+                array_keys(self::$FULLWIDTH_PUNCTUATION_MAP),
+                array_values(self::$FULLWIDTH_PUNCTUATION_MAP),
+                $str
+            );
         }
 
         return $str;

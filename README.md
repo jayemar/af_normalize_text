@@ -42,6 +42,12 @@ If the `intl` extension is unavailable, the plugin falls back to
 - `n` - fullwidth numeric characters to halfwidth
 - `s` - fullwidth ideographic space (U+3000) to halfwidth space
 
+Fullwidth ASCII punctuation (e.g., ；，（）：！？ and all others in the
+U+FF01-U+FF0F, U+FF1A-U+FF20, U+FF3B-U+FF40, and U+FF5B-U+FF5E ranges) is
+not covered by those flags, so the fallback additionally applies an explicit
+map to convert all 32 fullwidth punctuation code points to their halfwidth
+ASCII equivalents.
+
 If neither extension is available, the text is returned unchanged.
 
 ## Typographic Entity Replacement
@@ -68,7 +74,10 @@ Structural HTML entities (`&lt;`, `&amp;`, `&gt;`) are intentionally excluded
 and are never altered.
 
 Entity replacement applies to both title and content independently of the
-fullwidth normalization settings.
+fullwidth normalization settings. It runs before NFKC normalization so that
+any fullwidth character encoded as an HTML entity (e.g., `&#xFF1B;` for ；)
+is decoded to its Unicode code point first, and then NFKC converts it to the
+ASCII halfwidth equivalent in the same pass.
 
 ## HTML Character Entity Decoding
 
