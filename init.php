@@ -342,6 +342,11 @@ class Af_Normalize_Text extends Plugin {
             $str
         );
 
+        // Decode remaining HTML entities to Unicode before applying the Unicode
+        // maps, so entity-encoded fullwidth chars (e.g., &#xFF1B;) are decoded
+        // to their code points and caught by $FULLWIDTH_PUNCTUATION_MAP below.
+        $str = $this->decode_character_entities($str);
+
         $str = str_replace(
             array_keys(self::$UNICODE_MAP),
             array_values(self::$UNICODE_MAP),
@@ -353,8 +358,6 @@ class Af_Normalize_Text extends Plugin {
             array_values(self::$FULLWIDTH_PUNCTUATION_MAP),
             $str
         );
-
-        $str = $this->decode_character_entities($str);
 
         return $str;
     }

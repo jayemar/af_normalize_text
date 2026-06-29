@@ -895,6 +895,44 @@ class Af_Normalize_Text_Test extends TestCase {
             'Decimal-encoded fullwidth semicolon should be decoded then normalized');
     }
 
+    /**
+     * Test 74: replace_typographic() alone converts hex entity-encoded fullwidth semicolon
+     * Verifies that &#xFF1B; is decoded then converted within replace_typographic(),
+     * not deferred to normalize().
+     */
+    public function test_replace_typographic_entity_encoded_fullwidth_semicolon() {
+        $result = $this->plugin->replace_typographic('White House&#xFF1B; shot');
+        $this->assertEquals('White House; shot', $result,
+            '&#xFF1B; should be decoded then converted to halfwidth within replace_typographic()');
+    }
+
+    /**
+     * Test 75: replace_typographic() alone converts decimal entity-encoded fullwidth question mark
+     * U+FF1F = 65311 in decimal.
+     */
+    public function test_replace_typographic_entity_encoded_fullwidth_question_mark() {
+        $result = $this->plugin->replace_typographic('What is this&#65311; Really');
+        $this->assertEquals('What is this? Really', $result,
+            '&#65311; (decimal U+FF1F) should be decoded then converted to halfwidth within replace_typographic()');
+    }
+
+    /**
+     * Test 76: Entity-encoded fullwidth punctuation in title converted even when normalize_titles
+     * is disabled. replace_typographic() must be self-contained for fullwidth punctuation.
+     */
+    public function test_entity_encoded_fullwidth_converted_without_normalize() {
+        $plugin = $this->createPluginWithSettings([
+            'normalize_titles'             => false,
+            'normalize_content'            => false,
+            'replace_typographic_entities' => true,
+        ]);
+
+        $article = ['title' => 'White House&#xFF1B; shot', 'content' => ''];
+        $result = $plugin->hook_article_filter($article);
+        $this->assertEquals('White House; shot', $result['title'],
+            'Entity-encoded fullwidth semicolon should convert to ASCII even when normalize_titles is off');
+    }
+
     // =====================================================================
     // HELPER
     // =====================================================================
